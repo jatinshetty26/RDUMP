@@ -1,0 +1,37 @@
+# Helper function to read RSA private key from PEM
+function Get-RsaPrivateKeyFromPem {
+    param ([string]$pemFilePath)
+
+    $pem = Get-Content -Path $pemFilePath -Raw
+    $pem = $pem -replace "-----BEGIN RSA PRIVATE KEY-----", ""
+    $pem = $pem -replace "-----END RSA PRIVATE KEY-----", ""
+    $pem = $pem.Trim()
+
+    $keyBytes = [Convert]::FromBase64String($pem)
+
+    $rsa = [System.Security.Cryptography.RSACryptoServiceProvider]::new()
+    $rsa.ImportRSAPrivateKey($keyBytes, [ref]0) | Out-Null
+    return $rsa
+}
+
+$client_id = ""
+$private_key_path = ""
+
+$header = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -Compress @{
+  alg = "RS256"
+  typ = "JWT"
+}))).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+$payload = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -Compress @{
+  iat = [System.DateTimeOffset]::UtcNow.AddSeconds(-10).ToUnixTimeSeconds()
+  exp = [System.DateTimeOffset]::UtcNow.AddMinutes(10).ToUnixTimeSeconds()
+  iss = $client_id 
+}))).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+$rsa = Get-RsaPrivateKeyFromPem -pemFilePath $private_key_path
+
+$signatureBytes = $rsa.SignData([System.Text.Encoding]::UTF8.GetBytes("$header.$payload"), [System.Security.Cryptography.CryptoConfig]::MapNameToOID("SHA256"))
+$signature = [Convert]::ToBase64String($signatureBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+
+$jwt = "$header.$payload.$signature"
+Write-Host $jwt
