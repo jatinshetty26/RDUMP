@@ -1,11 +1,16 @@
-$server = "REMOTE_SERVER_NAME"  # Replace with target server
-$username = "DOMAIN\Username"  # Replace with appropriate credentials
-$password = "YourPassword"     # Secure this in production
+$remoteServer = "REMOTE-SERVER-NAME"  # Replace with the actual server name
+$domain = "REMOTE-SERVER-NAME"        # Use same name for local accounts
+$username = "Administrator"           # Replace with local admin username
+$password = "YourPassword"            # Replace with secure method in production
 
-$secpasswd = ConvertTo-SecureString $password -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential($username, $secpasswd)
+$dePath = "WinNT://$remoteServer"
+$de = New-Object System.DirectoryServices.DirectoryEntry($dePath, "$domain\$username", $password)
 
-# Query local user accounts via WMI over DCOM (port 445)
-Get-WmiObject -Class Win32_UserAccount -ComputerName $server -Credential $cred |
-    Where-Object { $_.LocalAccount -eq $true } |
-    Select-Object Name, Disabled, Lockout, PasswordChangeable, PasswordExpires
+$de.Children |
+    Where-Object { $_.SchemaClassName -eq 'User' } |
+    ForEach-Object {
+        [PSCustomObject]@{
+            Name     = $_.Name
+            Disabled = $_.Properties["UserFlags"].Value -band 2  # 2 = ACCOUNTDISABLE
+        }
+    }
