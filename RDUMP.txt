@@ -1,1 +1,12 @@
 
+$server = "REMOTE_SERVER_NAME"  # Replace with target server
+$username = "DOMAIN\Username"  # Replace with appropriate credentials
+$password = "YourPassword"     # Secure this in production
+
+$secpasswd = ConvertTo-SecureString $password -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential($username, $secpasswd)
+
+# Query local user accounts via WMI over DCOM (port 445)
+Get-WmiObject -Class Win32_UserAccount -ComputerName $server -Credential $cred |
+    Where-Object { $_.LocalAccount -eq $true } |
+    Select-Object Name, Disabled, Lockout, PasswordChangeable, PasswordExpires
