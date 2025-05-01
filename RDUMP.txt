@@ -1,4 +1,3 @@
-
 $server = "REMOTE_SERVER_NAME"  # Replace with target server
 $username = "DOMAIN\Username"  # Replace with appropriate credentials
 $password = "YourPassword"     # Secure this in production
