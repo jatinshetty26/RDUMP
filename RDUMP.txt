@@ -1,48 +1,27 @@
-import csv
-from pathlib import Path
+import os
 
-# Define paths
-csv_file = 'input.csv'
-template_file = 'template.xml'               # Role template
-second_template_file = 'second_template.xml' # Assignment template
-output_dir = Path('output_xmls')
+# --- CONFIGURATION ---
+xml_folder = 'path/to/xml/folder'              # Folder with XMLs to merge
+template_file = 'path/to/template.xml'         # Base XML file with "Replace Me"
+output_file = 'path/to/output/merged.xml'      # Output path for final XML
 
-# Ensure output directory exists
-output_dir.mkdir(exist_ok=True)
+# --- STEP 1: Read and merge XML files (skipping first 2 lines) ---
+merged_content = ""
+for filename in os.listdir(xml_folder):
+    if filename.endswith('.xml'):
+        file_path = os.path.join(xml_folder, filename)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()[2:]  # Skip first two lines
+            merged_content += ''.join(lines).strip() + "\n"
 
-# Read templates
+# --- STEP 2: Read the template XML and replace the placeholder ---
 with open(template_file, 'r', encoding='utf-8') as f:
-    xml_template = f.read()
+    template_xml = f.read()
 
-with open(second_template_file, 'r', encoding='utf-8') as f:
-    second_template = f.read()
+final_xml = template_xml.replace("Replace Me", merged_content.strip())
 
-# Process CSV
-with open(csv_file, 'r', encoding='utf-8') as f:
-    reader = csv.reader(f)
-    next(reader)  # Skip header
+# --- STEP 3: Write final output ---
+with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(final_xml)
 
-    for row in reader:
-        if len(row) < 2:
-            continue
-
-        col1 = row[0].strip()
-        col2 = row[1].strip()
-
-        # Generate Role XML
-        updated_role_xml = xml_template.replace("replace jn", col2)
-        role_filename = output_dir / f'SPRC_{col2}_role.xml'
-        with open(role_filename, 'w', encoding='utf-8') as out_file:
-            out_file.write(updated_role_xml)
-
-        # Generate Assignment XML
-        updated_assignment_xml = (
-            second_template
-            .replace("replace jn", col2)
-            .replace("replace adg", col1)
-        )
-        assignment_filename = output_dir / f'SPRC_{col2}_assignment.xml'
-        with open(assignment_filename, 'w', encoding='utf-8') as out_file:
-            out_file.write(updated_assignment_xml)
-
-print(f"All XML files created in folder: {output_dir.resolve()}")
+print(f"Merged XML written to: {output_file}")
